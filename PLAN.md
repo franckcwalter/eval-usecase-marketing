@@ -41,7 +41,7 @@ la campagne reste rentable (le but de la banque)
 
 # EXPLORATION ET PRÉPARTION DES DONNÉES (EDA)
 
-> Doc : [`aide_memoire_M1.pdf`](ressources/aide_memoire_M1.pdf) — workflow en 7 étapes, règle « on n'apprend que sur le train », tableau des métriques, fuite de données.
+> Doc : [`aide_memoire_M1.pdf`](docs/aide_memoire_M1.pdf) — workflow en 7 étapes, règle « on n'apprend que sur le train », tableau des métriques, fuite de données.
 
 
 ## La Cible
@@ -66,7 +66,7 @@ s'assurer de la bonne qualité des données avant toute manipulation
 
 # MODÉLISATION ET ÉVALUATION
 
-> Doc : [`aide_memoire_M1.pdf`](ressources/aide_memoire_M1.pdf) — workflow en 7 étapes, règle « on n'apprend que sur le train », tableau des métriques, fuite de données.
+> Doc : [`aide_memoire_M1.pdf`](docs/aide_memoire_M1.pdf) — workflow en 7 étapes, règle « on n'apprend que sur le train », tableau des métriques, fuite de données.
 
 ## Tester et Comparer Plusieurs Familles de Modèles
 
