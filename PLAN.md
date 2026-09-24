@@ -1,5 +1,12 @@
+# QUESTIONNAIRE — PRÉPARATION DU QUIZ
 
-
+- Le questionnaire porte **uniquement sur les compétences C1, C2 et C4**.
+- Le [référentiel](docs/00_competences_referentiels.md) confirme : **15 questions sur C1, C2 et C4**.
+- **Ressources de la formatrice importées dans `docs/` :**
+  - [Glossaire IA](docs/glossaire_IA.md) : les termes utiles au questionnaire C1/C2/C4 sont marqués 🎓.
+  - [Cheatsheet métriques](docs/cheatsheet_metriques.md) : les métriques du questionnaire C4 sont marquées 🎓.
+  - Compléments C4 : [grille de décision](docs/grille_decision_C4.md) et [outil de décision](docs/outil_decision_C4.md).
+- [ ] Récupérer le document dédié de Marianne annoncé pour la préparation du quiz, dès qu’il sera disponible : aucun fichier distinct clairement identifié comme ce document dans le dossier local vérifié le 15/09/2026.
 
 # CONTEXTE
 
@@ -32,10 +39,10 @@ DONC :
 ==  ON PRIVILÉGIE LE RAPPEL POUR LIMITER LES FAUX NÉGATIFS
     ON ACCEPTE DAVANTAGE DE FAUX POSTIIFS 
 
-le ciblage permet de réduire le coût d’acquisition client 
-en limitant les appels qui n’aboutissent pas à une souscription 
-tant que la marge attendue d’un client acquis dépasse son coût d’acquisition
-la campagne reste rentable (le but de la banque)
+le ciblage permet de réduire le coût d’acquisition client  
+en limitant les appels qui n’aboutissent pas à une souscription   
+tant que la marge attendue d’un client acquis dépasse son coût d’acquisition  
+la campagne reste rentable (le but de la banque)  
 
 
 
@@ -139,10 +146,11 @@ et commenter l'écart de performance observé entre les scénarios 1 et 2
 Si elle n'est disponible qu'une fois l'appel terminé
 peut-on légitimement l'utiliser pour décider, en amont, qui appeler ?
 
-à clarifier : 
-=> c'est pas une histoire de rappel ? 
-donc on se base sur des anciennes campagnes pour décider des nouelles campagnes 
-les données ne sont pas dispo pour tous les clients ? 
+clarifié : 
+duration, month, day_of_week et campaign décrivent le contact de la campagne en cours 
+la campagne précédente, c'est pdays, previous et poutcome 
+duration n'est connue qu'une fois l'appel fini, donc pas au moment de choisir qui appeler 
+=> on l'exclut 
 
 ### Scénario 3 : sans variables sensibles + RGPD & données personnelles
 
