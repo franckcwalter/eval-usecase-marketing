@@ -11,7 +11,7 @@ COPY --chown=appuser:appuser api/ api/
 COPY --chown=appuser:appuser training/__init__.py training/pipeline.py training/
 COPY --chown=appuser:appuser models/ models/
 COPY --chown=appuser:appuser frontend/ frontend/
-RUN mkdir logs && chown appuser:appuser logs
+RUN mkdir logs storage && chown appuser:appuser logs storage
 
 USER appuser
 EXPOSE 8000

@@ -9,8 +9,9 @@ from api.main import app
 DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "bank-additional-full.csv"
 
 
-@pytest.fixture(scope="session")
-def client():
+@pytest.fixture
+def client(tmp_path, monkeypatch):
+    monkeypatch.setenv("FEEDBACK_DB_PATH", str(tmp_path / "feedback.db"))
     with TestClient(app) as test_client:
         yield test_client
 
@@ -18,6 +19,8 @@ def client():
 @pytest.fixture
 def valid_payload() -> dict:
     return {
+        "client_id": "000123",
+        "campaign_id": "campagne-2026-10",
         "contact": "cellular",
         "default": "no",
         "housing": "yes",
@@ -32,4 +35,7 @@ def valid_payload() -> dict:
 
 @pytest.fixture
 def clients_csv() -> pd.DataFrame:
-    return pd.read_csv(DATA_PATH, sep=";").drop(columns="y").sample(50, random_state=0)
+    frame = pd.read_csv(DATA_PATH, sep=";").drop(columns="y").sample(50, random_state=0)
+    frame["client_id"] = [f"{i:06d}" for i in range(len(frame))]
+    frame["campaign_id"] = "campagne-2026-10"
+    return frame

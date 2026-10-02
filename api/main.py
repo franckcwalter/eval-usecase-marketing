@@ -6,6 +6,7 @@ Lancement, depuis la racine du repo :
 import csv
 import io
 import json
+import os
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -18,7 +19,8 @@ from pydantic import TypeAdapter, ValidationError
 
 from api.middleware import LoggingMiddleware
 from api.ranking import rank_clients, tranche_of_score
-from api.schemas import ClientProfile, HealthResponse, Prediction
+from api.schemas import Feedback, FeedbackResponse, HealthResponse, Prediction, ScoringRequest
+from api.storage import initialize, save_feedback, save_predictions
 from training.pipeline import FEATURES
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -33,11 +35,13 @@ logger.remove()
 logger.add(sys.stderr, level="INFO")
 logger.add(LOGS_DIR / "api.log", level="INFO", serialize=True, enqueue=True, rotation="10 MB", retention="30 days")
 
-clients_adapter = TypeAdapter(list[ClientProfile])
+clients_adapter = TypeAdapter(list[ScoringRequest])
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    app.state.database_path = Path(os.environ.get("FEEDBACK_DB_PATH", ROOT / "storage" / "feedback.db"))
+    initialize(app.state.database_path)
     app.state.model = joblib.load(MODEL_PATH)
     app.state.metadata = json.loads(META_PATH.read_text(encoding="utf-8"))
     logger.info("Modèle chargé : {} {}", app.state.metadata["model_name"], app.state.metadata["model_version"])
@@ -79,10 +83,17 @@ def health() -> HealthResponse:
 
 
 @app.post("/predict", response_model=Prediction)
-def predict(client: ClientProfile, request: Request) -> Prediction:
-    entrees = client.model_dump(by_alias=True)
+def predict(client: ScoringRequest, request: Request) -> Prediction:
+    entrees = client.model_dump(by_alias=True, exclude={"client_id", "campaign_id"})
     score = round(float(predict_scores(pd.DataFrame([entrees]))[0]), 3)
     tranche = tranche_of_score(score, app.state.metadata["tranches_test"])
+    save_predictions(app.state.database_path, [{
+        "client_id": client.client_id, "campaign_id": client.campaign_id,
+        "features": entrees, "score": score, "tranche": tranche["tranche"],
+        "displayed_rate": tranche["taux_souscription"], "tranche_method": "test_score_bounds",
+        "rank": None, "batch_id": None, "model_version": app.state.metadata["model_version"],
+        "request_id": request.state.request_id,
+    }])
     logger.bind(
         request_id=request.state.request_id, entrees=entrees, score=score, tranche=tranche["tranche"]
     ).info("Prédiction")
@@ -109,12 +120,12 @@ def rank(file: UploadFile, request: Request) -> Response:
     if clients.empty:
         raise HTTPException(status_code=422, detail="Le fichier ne contient aucun client")
 
-    manquantes = [col for col in FEATURES if col not in clients.columns]
+    manquantes = [col for col in [*FEATURES, "client_id", "campaign_id"] if col not in clients.columns]
     if manquantes:
         raise HTTPException(status_code=422, detail={"colonnes_manquantes": manquantes})
 
     try:
-        profils = clients_adapter.validate_python(clients[FEATURES].to_dict("records"))
+        profils = clients_adapter.validate_python(clients[[*FEATURES, "client_id", "campaign_id"]].to_dict("records"))
     except ValidationError as exc:
         erreurs = [
             {"ligne": err["loc"][0] + 2, "colonne": err["loc"][1], "message": err["msg"]}
@@ -122,9 +133,24 @@ def rank(file: UploadFile, request: Request) -> Response:
         ]
         raise HTTPException(status_code=422, detail={"nb_erreurs": exc.error_count(), "erreurs": erreurs}) from exc
 
-    features = pd.DataFrame([profil.model_dump(by_alias=True) for profil in profils])
+    validated = pd.DataFrame([profil.model_dump(by_alias=True) for profil in profils])
+    if validated.duplicated(["client_id", "campaign_id"]).any():
+        raise HTTPException(422, "Un client apparaît plusieurs fois dans la même campagne")
+    if validated["campaign_id"].nunique() != 1:
+        raise HTTPException(422, "Le fichier doit contenir une seule campagne")
+    clients[["client_id", "campaign_id"]] = validated[["client_id", "campaign_id"]]
+    features = validated[FEATURES]
     taux_par_tranche = {t["tranche"]: t["taux_souscription"] for t in app.state.metadata["tranches_test"]}
     ranked = rank_clients(clients, predict_scores(features), taux_par_tranche)
+    features_by_client = dict(zip(validated["client_id"], features.to_dict("records")))
+    save_predictions(app.state.database_path, [{
+        "client_id": row["client_id"], "campaign_id": row["campaign_id"],
+        "features": features_by_client[row["client_id"]], "score": row["score"],
+        "tranche": row["tranche"], "displayed_rate": row["taux_reel_tranche"],
+        "tranche_method": "batch_rank", "rank": row["rang"],
+        "batch_id": request.state.request_id, "model_version": app.state.metadata["model_version"],
+        "request_id": request.state.request_id,
+    } for row in ranked.to_dict("records")])
     logger.bind(
         request_id=request.state.request_id,
         fichier=file.filename,
@@ -137,6 +163,12 @@ def rank(file: UploadFile, request: Request) -> Response:
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="clients_classes.csv"'},
     )
+
+
+@app.post("/feedback", response_model=FeedbackResponse, status_code=201)
+def feedback(result: Feedback) -> FeedbackResponse:
+    status = save_feedback(app.state.database_path, result.client_id, result.campaign_id, result.true_label)
+    return FeedbackResponse(status=status, client_id=result.client_id, campaign_id=result.campaign_id)
 
 
 app.frontend("/", directory=FRONTEND_DIR)

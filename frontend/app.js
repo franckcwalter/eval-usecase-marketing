@@ -82,6 +82,8 @@ form.addEventListener('submit', async (e) => {
     });
     if (!res.ok) throw new Error(await errorMessage(res));
     const data = await res.json();
+    document.getElementById('feedbackClient').value = payload.client_id;
+    document.getElementById('feedbackCampaign').value = payload.campaign_id;
     const debutTranche = parseInt(data.tranche, 10);
     result.classList.add(debutTranche < 30 ? 'ok' : debutTranche < 50 ? 'warn' : 'ko');
     result.innerHTML = `
@@ -140,6 +142,8 @@ const keptRows = () => {
 
 const meanRate = (rows) => rows.reduce((sum, row) => sum + Number(row[ranked.col('taux_reel_tranche')]), 0) / rows.length;
 
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+
 const renderRanked = () => {
   const rows = keptRows();
   document.getElementById('keptPercent').textContent = Number(tranchesKept.value) * 10;
@@ -150,8 +154,8 @@ const renderRanked = () => {
   const columns = [...FIRST_COLUMNS, ...ranked.header.filter((name) => !FIRST_COLUMNS.includes(name))];
   const indexes = columns.map(ranked.col);
   preview.innerHTML = `
-    <thead><tr>${columns.map((name) => `<th>${name}</th>`).join('')}</tr></thead>
-    <tbody>${rows.slice(0, PREVIEW_ROWS).map((row) => `<tr>${indexes.map((i) => `<td>${row[i]}</td>`).join('')}</tr>`).join('')}</tbody>
+    <thead><tr>${columns.map((name) => `<th>${escapeHtml(name)}</th>`).join('')}</tr></thead>
+    <tbody>${rows.slice(0, PREVIEW_ROWS).map((row) => `<tr>${indexes.map((i) => `<td>${escapeHtml(row[i])}</td>`).join('')}</tr>`).join('')}</tbody>
   `;
 };
 
@@ -195,4 +199,33 @@ document.getElementById('download').addEventListener('click', () => {
   link.download = `clients_top_${limit}.csv`;
   link.click();
   URL.revokeObjectURL(link.href);
+});
+
+
+const feedbackForm = document.getElementById('feedbackForm');
+const feedbackStatus = document.getElementById('feedbackStatus');
+feedbackForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = Object.fromEntries(new FormData(feedbackForm));
+  payload.true_label = Number(payload.true_label);
+  const button = feedbackForm.querySelector('button[type="submit"]');
+  button.disabled = true;
+  feedbackStatus.className = 'rank-status';
+  feedbackStatus.textContent = 'Enregistrement en cours…';
+  try {
+    const res = await fetch('/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(await errorMessage(res));
+    const data = await res.json();
+    feedbackStatus.textContent = data.status === 'already_stored'
+      ? 'Ce résultat est déjà enregistré.' : 'Résultat enregistré.';
+  } catch (err) {
+    feedbackStatus.classList.add('error');
+    feedbackStatus.textContent = `Erreur : ${err.message}`;
+  } finally {
+    button.disabled = false;
+  }
 });

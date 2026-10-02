@@ -29,6 +29,11 @@
     <div class="workspace">
       <section class="card form-card">
         <form id="scoreForm">
+          <label for="client_id">Identifiant client</label>
+          <input id="client_id" name="client_id" type="text" maxlength="100" required>
+
+          <label for="campaign_id">Identifiant de la campagne</label>
+          <input id="campaign_id" name="campaign_id" type="text" maxlength="100" required>
           <label for="contact">Canal du dernier contact</label>
           <select id="contact" name="contact" required>
             <option value="cellular">Mobile</option>
@@ -88,7 +93,7 @@
     <section class="card">
       <label for="csvFile" id="dropZone" class="drop-zone">
         <strong>Déposer un fichier CSV ici</strong>
-        <span>ou cliquer pour le choisir. Séparateur <code>;</code> ou <code>,</code>, avec les colonnes du jeu de données.</span>
+        <span>ou cliquer pour le choisir. Séparateur <code>;</code> ou <code>,</code>, avec les neuf variables du modèle et les colonnes <code>client_id</code> et <code>campaign_id</code>. Une seule campagne par fichier.</span>
         <input id="csvFile" type="file" accept=".csv,text/csv">
       </label>
       <p id="rankStatus" class="rank-status" role="status" aria-live="polite"></p>
@@ -109,6 +114,30 @@
         <p class="table-note">Aperçu des 20 premiers clients gardés.</p>
         <button type="button" id="download">Télécharger les clients gardés</button>
       </div>
+    </section>
+    <h2>Résultat de campagne</h2>
+    <section class="card">
+      <form id="feedbackForm">
+        <div class="field">
+          <label for="feedbackClient">Identifiant client</label>
+          <input id="feedbackClient" name="client_id" type="text" maxlength="100" required>
+        </div>
+        <div class="field">
+          <label for="feedbackCampaign">Identifiant de la campagne</label>
+          <input id="feedbackCampaign" name="campaign_id" type="text" maxlength="100" required>
+        </div>
+        <div class="field">
+          <label for="feedbackLabel">Résultat confirmé</label>
+          <select id="feedbackLabel" name="true_label" required>
+            <option value="">Choisir le résultat</option>
+            <option value="1">A souscrit</option>
+            <option value="0">N’a pas souscrit</option>
+          </select>
+        </div>
+        <div class="actions"><button type="submit">Enregistrer le résultat</button></div>
+      </form>
+      <p class="table-note">Renseigner uniquement un résultat confirmé. Un résultat inconnu reste sans réponse.</p>
+      <p id="feedbackStatus" class="rank-status" role="status" aria-live="polite"></p>
     </section>
   </main>
   <footer class="footer">Document interne · Diffusion restreinte · Les taux affichés sont observés sur l’historique des campagnes.</footer>

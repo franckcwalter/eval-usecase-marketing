@@ -4,9 +4,12 @@ Les alias reprennent les noms de colonnes du fichier de données, qui contiennen
 """
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 YesNoUnknown = Literal["no", "unknown", "yes"]
+Identifier = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
 
 
 class ClientProfile(BaseModel):
@@ -46,6 +49,23 @@ class Prediction(BaseModel):
     taux_reel_tranche: float = Field(description="Taux de souscription mesuré dans cette tranche sur le jeu de test")
     model_version: str
     request_id: str
+
+
+class ScoringRequest(ClientProfile):
+    client_id: Identifier
+    campaign_id: Identifier
+
+
+class Feedback(BaseModel):
+    client_id: Identifier
+    campaign_id: Identifier
+    true_label: int = Field(strict=True, ge=0, le=1)
+
+
+class FeedbackResponse(BaseModel):
+    status: Literal["stored", "already_stored"]
+    client_id: str
+    campaign_id: str
 
 
 class HealthResponse(BaseModel):

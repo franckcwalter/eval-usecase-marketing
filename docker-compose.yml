@@ -6,7 +6,21 @@ services:
       - "8000:8000"
     volumes:
       - logs:/home/appuser/app/logs
+      - feedback:/home/appuser/app/storage
+    restart: unless-stopped
+
+  sqlite-web:
+    image: ghcr.io/coleifer/sqlite-web:latest
+    command: ["--read-only", "feedback.db"]
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - feedback:/data:ro
+    depends_on:
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
   logs:
+  feedback:
