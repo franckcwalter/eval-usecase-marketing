@@ -4,3 +4,7 @@
 docs/
 CLAUDE.md
 AGENTS.md
+mlflow.db
+mlruns/
+__pycache__/
+logs/
