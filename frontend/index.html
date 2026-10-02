@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scoring des clients — campagne de dépôt à terme</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,600&display=swap">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <span class="brand"><span class="brand-mark" aria-hidden="true"></span>Direction Marketing</span>
+      <span class="topbar-meta">Outil interne · Usage réservé aux collaborateurs</span>
+    </div>
+  </header>
+  <div class="page-head">
+    <div class="page-head-inner">
+      <p class="eyebrow">Campagnes › Dépôt à terme</p>
+      <h1>Scoring des clients</h1>
+      <p class="intro">Le modèle classe les clients selon leurs chances de souscrire. Chaque client reçoit une tranche de 10 % du classement et le taux de souscription réellement observé dans cette tranche.</p>
+    </div>
+  </div>
+  <main>
+
+    <h2>Un client</h2>
+    <div class="workspace">
+      <section class="card form-card">
+        <form id="scoreForm">
+          <label for="contact">Canal du dernier contact</label>
+          <select id="contact" name="contact" required>
+            <option value="cellular">Mobile</option>
+            <option value="telephone">Fixe</option>
+          </select>
+
+          <label for="poutcome">Résultat de la campagne précédente</label>
+          <select id="poutcome" name="poutcome" required>
+            <option value="nonexistent">Pas de campagne précédente</option>
+            <option value="failure">Échec</option>
+            <option value="success">Succès</option>
+          </select>
+
+          <label for="previous">Contacts avant cette campagne</label>
+          <input id="previous" name="previous" type="number" min="0" step="1" required>
+
+          <label for="default">Défaut de crédit connu</label>
+          <select id="default" name="default" required>
+            <option value="no">Non</option>
+            <option value="yes">Oui</option>
+            <option value="unknown">Inconnu</option>
+          </select>
+
+          <label for="housing">Prêt immobilier en cours</label>
+          <select id="housing" name="housing" required>
+            <option value="no">Non</option>
+            <option value="yes">Oui</option>
+            <option value="unknown">Inconnu</option>
+          </select>
+
+          <label for="loan">Prêt personnel en cours</label>
+          <select id="loan" name="loan" required>
+            <option value="no">Non</option>
+            <option value="yes">Oui</option>
+            <option value="unknown">Inconnu</option>
+          </select>
+
+          <label for="emp.var.rate">Variation de l'emploi (trimestre, %)</label>
+          <input id="emp.var.rate" name="emp.var.rate" type="number" step="0.1" required>
+
+          <label for="cons.price.idx">Indice des prix à la consommation</label>
+          <input id="cons.price.idx" name="cons.price.idx" type="number" min="0" step="0.001" required>
+
+          <label for="cons.conf.idx">Indice de confiance des consommateurs</label>
+          <input id="cons.conf.idx" name="cons.conf.idx" type="number" step="0.1" required>
+
+          <div class="actions">
+            <button type="button" id="randomClient" class="secondary">↻ Client au hasard</button>
+            <button type="submit">Calculer</button>
+          </div>
+        </form>
+      </section>
+      <aside id="result" class="result-card" role="status" aria-live="polite"></aside>
+    </div>
+
+    <h2>Un fichier de clients</h2>
+    <section class="card">
+      <label for="csvFile" id="dropZone" class="drop-zone">
+        <strong>Déposer un fichier CSV ici</strong>
+        <span>ou cliquer pour le choisir. Séparateur <code>;</code> ou <code>,</code>, avec les colonnes du jeu de données.</span>
+        <input id="csvFile" type="file" accept=".csv,text/csv">
+      </label>
+      <p id="rankStatus" class="rank-status" role="status" aria-live="polite"></p>
+
+      <div id="rankResult" hidden>
+        <div class="rank-controls">
+          <label for="tranchesKept">Garder les <output id="keptPercent">30</output> % les mieux classés</label>
+          <input id="tranchesKept" type="range" min="1" max="10" step="1" value="3">
+        </div>
+        <div class="stats">
+          <div><span class="stat-value" id="statKept"></span><span class="stat-label">clients gardés</span></div>
+          <div><span class="stat-value" id="statRate"></span><span class="stat-label">taux de souscription observé dans ces tranches</span></div>
+          <div><span class="stat-value" id="statAll"></span><span class="stat-label">sur tout le fichier</span></div>
+        </div>
+        <div class="table-wrap">
+          <table id="preview"></table>
+        </div>
+        <p class="table-note">Aperçu des 20 premiers clients gardés.</p>
+        <button type="button" id="download">Télécharger les clients gardés</button>
+      </div>
+    </section>
+  </main>
+  <footer class="footer">Document interne · Diffusion restreinte · Les taux affichés sont observés sur l’historique des campagnes.</footer>
+  <script src="/app.js"></script>
+</body>
+</html>

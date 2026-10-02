@@ -1,4 +1,5 @@
 """Recette du modèle retenu au §5.6 du notebook : régression logistique, scénario S5."""
+import numpy as np
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
@@ -22,6 +23,11 @@ def regrouper_default(donnees):
     if "default" in donnees.columns:
         donnees["default"] = donnees["default"].replace({"yes": "unknown"})
     return donnees
+
+
+def tranche_labels(n: int) -> list[str]:
+    """Tranche de 10 % de chaque position d'un classement de n clients, du mieux classé au moins bien classé."""
+    return [f"{d}-{d + 10} %" for d in (np.arange(n) * 10 // n) * 10]
 
 
 def build_pipeline() -> Pipeline:

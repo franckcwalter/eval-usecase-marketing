@@ -18,17 +18,20 @@ def test_health(client):
     assert response.json()["status"] == "ok"
 
 
-def test_predict_returns_model_probability(client, valid_payload):
+def test_predict_returns_model_score_and_tranche(client, valid_payload):
     response = client.post("/predict", json=valid_payload)
     assert response.status_code == 200
+    data = response.json()
     expected = joblib.load(MODEL_PATH).predict_proba(pd.DataFrame([valid_payload]))[0, 1]
-    assert response.json()["probabilite"] == round(expected, 3)
-    assert response.headers["X-Request-ID"] == response.json()["request_id"]
+    assert data["score"] == round(expected, 3)
+    assert data["tranche"].endswith(" %")
+    assert 0.0 <= data["taux_reel_tranche"] <= 1.0
+    assert response.headers["X-Request-ID"] == data["request_id"]
 
 
 def test_predict_is_deterministic(client, valid_payload):
-    first = client.post("/predict", json=valid_payload).json()["probabilite"]
-    second = client.post("/predict", json=valid_payload).json()["probabilite"]
+    first = client.post("/predict", json=valid_payload).json()["score"]
+    second = client.post("/predict", json=valid_payload).json()["score"]
     assert first == second
 
 
@@ -57,9 +60,10 @@ def test_rank_sorts_and_adds_columns(client, clients_csv, sep):
     ranked = pd.read_csv(io.StringIO(response.text), sep=sep)
     assert len(ranked) == len(clients_csv)
     assert set(clients_csv.columns) <= set(ranked.columns)
-    assert ranked["probabilite"].is_monotonic_decreasing
+    assert ranked["score"].is_monotonic_decreasing
     assert ranked["rang"].tolist() == list(range(1, len(ranked) + 1))
     assert ranked["tranche"].value_counts().tolist() == [5] * 10
+    assert ranked["taux_reel_tranche"].notna().all()
 
 
 def test_rank_rejects_missing_column(client, clients_csv):

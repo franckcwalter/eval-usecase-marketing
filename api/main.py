@@ -17,13 +17,14 @@ from loguru import logger
 from pydantic import TypeAdapter, ValidationError
 
 from api.middleware import LoggingMiddleware
-from api.ranking import rank_clients
+from api.ranking import rank_clients, tranche_of_score
 from api.schemas import ClientProfile, HealthResponse, Prediction
 from training.pipeline import FEATURES
 
 ROOT = Path(__file__).resolve().parent.parent
 MODEL_PATH = ROOT / "models" / "pipeline.joblib"
 META_PATH = ROOT / "models" / "pipeline.json"
+FRONTEND_DIR = ROOT / "frontend"
 LOGS_DIR = ROOT / "logs"
 MAX_ERREURS_AFFICHEES = 20
 
@@ -46,14 +47,14 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="API de scoring — campagne de dépôt à terme",
-    description="Probabilité de souscription d'un client et classement d'un fichier de clients.",
+    description="Score de souscription d'un client et classement d'un fichier de clients.",
     version="1.0.0",
     lifespan=lifespan,
 )
 app.add_middleware(LoggingMiddleware)
 
 
-def predict_probas(features: pd.DataFrame):
+def predict_scores(features: pd.DataFrame):
     try:
         return app.state.model.predict_proba(features[FEATURES])[:, 1]
     except Exception as exc:
@@ -80,10 +81,15 @@ def health() -> HealthResponse:
 @app.post("/predict", response_model=Prediction)
 def predict(client: ClientProfile, request: Request) -> Prediction:
     entrees = client.model_dump(by_alias=True)
-    probabilite = round(float(predict_probas(pd.DataFrame([entrees]))[0]), 3)
-    logger.bind(request_id=request.state.request_id, entrees=entrees, probabilite=probabilite).info("Prédiction")
+    score = round(float(predict_scores(pd.DataFrame([entrees]))[0]), 3)
+    tranche = tranche_of_score(score, app.state.metadata["tranches_test"])
+    logger.bind(
+        request_id=request.state.request_id, entrees=entrees, score=score, tranche=tranche["tranche"]
+    ).info("Prédiction")
     return Prediction(
-        probabilite=probabilite,
+        score=score,
+        tranche=tranche["tranche"],
+        taux_reel_tranche=tranche["taux_souscription"],
         model_version=app.state.metadata["model_version"],
         request_id=request.state.request_id,
     )
@@ -95,9 +101,9 @@ def predict(client: ClientProfile, request: Request) -> Prediction:
     responses={200: {"content": {"text/csv": {}}, "description": "CSV des clients classés"}},
 )
 def rank(file: UploadFile, request: Request) -> Response:
-    """Classe les clients d'un CSV par probabilité de souscription décroissante.
+    """Classe les clients d'un CSV par score décroissant.
 
-    Le CSV renvoyé reprend toutes les colonnes reçues et ajoute probabilite, rang et tranche.
+    Le CSV renvoyé reprend toutes les colonnes reçues et ajoute score, rang, tranche et taux_reel_tranche.
     """
     clients, sep = read_csv(file.file.read())
     if clients.empty:
@@ -117,12 +123,13 @@ def rank(file: UploadFile, request: Request) -> Response:
         raise HTTPException(status_code=422, detail={"nb_erreurs": exc.error_count(), "erreurs": erreurs}) from exc
 
     features = pd.DataFrame([profil.model_dump(by_alias=True) for profil in profils])
-    ranked = rank_clients(clients, predict_probas(features))
+    taux_par_tranche = {t["tranche"]: t["taux_souscription"] for t in app.state.metadata["tranches_test"]}
+    ranked = rank_clients(clients, predict_scores(features), taux_par_tranche)
     logger.bind(
         request_id=request.state.request_id,
         fichier=file.filename,
         nb_clients=len(ranked),
-        probabilite_moyenne=round(float(ranked["probabilite"].mean()), 3),
+        score_moyen=round(float(ranked["score"].mean()), 3),
     ).info("Classement")
 
     return Response(
@@ -130,3 +137,6 @@ def rank(file: UploadFile, request: Request) -> Response:
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="clients_classes.csv"'},
     )
+
+
+app.frontend("/", directory=FRONTEND_DIR)

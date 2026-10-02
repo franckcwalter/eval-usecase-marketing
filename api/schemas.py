@@ -41,7 +41,9 @@ class ClientProfile(BaseModel):
 
 
 class Prediction(BaseModel):
-    probabilite: float = Field(ge=0.0, le=1.0, description="Probabilité de souscription")
+    score: float = Field(ge=0.0, le=1.0, description="Score du modèle, sert à classer les clients entre eux")
+    tranche: str = Field(description="Tranche de 10 % du classement du jeu de test où tombe ce score")
+    taux_reel_tranche: float = Field(description="Taux de souscription mesuré dans cette tranche sur le jeu de test")
     model_version: str
     request_id: str
 

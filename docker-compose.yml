@@ -1,0 +1,12 @@
+services:
+  api:
+    build: .
+    image: eval-usecase-marketing-api
+    ports:
+      - "8000:8000"
+    volumes:
+      - logs:/home/appuser/app/logs
+    restart: unless-stopped
+
+volumes:
+  logs:

@@ -1,20 +1,27 @@
-"""Classement d'un fichier de clients par probabilité de souscription."""
+"""Classement des clients et lecture des tranches de 10 % mesurées sur le jeu de test."""
 import numpy as np
 import pandas as pd
 
+from training.pipeline import tranche_labels
 
-def rank_clients(clients: pd.DataFrame, probas: np.ndarray) -> pd.DataFrame:
-    """Trie les clients par probabilité décroissante et ajoute probabilite, rang et tranche.
+
+def rank_clients(clients: pd.DataFrame, scores: np.ndarray, taux_par_tranche: dict[str, float]) -> pd.DataFrame:
+    """Trie les clients par score décroissant et ajoute score, rang, tranche et taux_reel_tranche.
 
     Les tranches découpent le classement du fichier reçu en dix parts égales.
     """
     ranked = (
-        clients.assign(probabilite=np.round(probas, 3), _proba=probas)
-        .sort_values("_proba", ascending=False, kind="stable")
-        .drop(columns="_proba")
+        clients.assign(score=np.round(scores, 3), _score=scores)
+        .sort_values("_score", ascending=False, kind="stable")
+        .drop(columns="_score")
         .reset_index(drop=True)
     )
     ranked["rang"] = np.arange(1, len(ranked) + 1)
-    debut = (ranked.index * 10 // len(ranked)) * 10
-    ranked["tranche"] = [f"{d}-{d + 10} %" for d in debut]
+    ranked["tranche"] = tranche_labels(len(ranked))
+    ranked["taux_reel_tranche"] = ranked["tranche"].map(taux_par_tranche)
     return ranked
+
+
+def tranche_of_score(score: float, tranches_test: list[dict]) -> dict:
+    """Tranche du test dans laquelle tombe un score : la première dont le score minimal est atteint."""
+    return next((t for t in tranches_test if score >= t["score_min"]), tranches_test[-1])
