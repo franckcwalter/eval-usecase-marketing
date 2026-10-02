@@ -1,4 +1,3 @@
-# Dépendances des notebooks (pré-M1)
 # Installation : pip install -r requirements.txt
 
 pandas          # decouverte_pandas, decouverte_scikit_learn, canvas
@@ -6,5 +5,7 @@ numpy           # canvas
 matplotlib      # graphiques : decouverte_pandas (.plot), canvas
 seaborn         # canvas
 scikit-learn    # decouverte_scikit_learn (import sklearn)
+shap            # cas_usage_bank_marketing §7.1
+ipywidgets      # barres de progression de shap dans le notebook
 
 ipykernel       # exécuter les notebooks (kernel Jupyter dans l'IDE)
