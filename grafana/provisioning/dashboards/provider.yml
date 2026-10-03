@@ -1,0 +1,6 @@
+apiVersion: 1
+providers:
+  - name: Bank Marketing
+    type: file
+    options:
+      path: /etc/grafana/provisioning/dashboards

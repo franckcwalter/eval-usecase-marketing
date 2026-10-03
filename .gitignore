@@ -9,4 +9,10 @@ mlruns/
 __pycache__/
 logs/
 storage/
+reports/
+models/candidates/
 .pytest_cache/
+data/feedbacks*.csv
+data/*.provenance.json
+data/train*.csv
+data/clients_test_*.csv

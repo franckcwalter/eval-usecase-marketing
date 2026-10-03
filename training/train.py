@@ -26,7 +26,7 @@ from sklearn.model_selection import train_test_split
 
 from training.pipeline import (
     CATEGORICAL_FEATURES, FEATURES, HYPERPARAMETERS, NUMERIC_FEATURES,
-    RANDOM_STATE, SCENARIO, TARGET, TARGET_MAPPING, build_pipeline, tranche_labels,
+    RANDOM_STATE, SCENARIO, TARGET, TARGET_MAPPING, build_pipeline, tranches_test,
 )
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -40,24 +40,6 @@ def rappel_selection(y_vrai, probas, proportion):
     """Part des souscripteurs retrouvés parmi la proportion de clients au score le plus élevé."""
     selection = np.argsort(-probas, kind="stable")[: int(len(probas) * proportion)]
     return np.asarray(y_vrai)[selection].sum() / np.asarray(y_vrai).sum()
-
-
-def tranches_test(y_vrai, probas) -> list[dict]:
-    """Score minimal et taux réel de souscription de chaque tranche de 10 % du classement du test."""
-    ordre = np.argsort(-probas, kind="stable")
-    tranches = (
-        pd.DataFrame({
-            "tranche": tranche_labels(len(probas)),
-            "score": probas[ordre],
-            "souscrit": np.asarray(y_vrai)[ordre],
-        })
-        .groupby("tranche", sort=False)
-        .agg(score_min=("score", "min"), taux_souscription=("souscrit", "mean"))
-    )
-    return [
-        {"tranche": tranche, "score_min": round(row.score_min, 4), "taux_souscription": round(row.taux_souscription, 4)}
-        for tranche, row in tranches.iterrows()
-    ]
 
 
 def git_commit() -> str:

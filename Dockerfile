@@ -8,7 +8,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r api/requirements.txt
 
 COPY --chown=appuser:appuser api/ api/
-COPY --chown=appuser:appuser training/__init__.py training/pipeline.py training/
+COPY --chown=appuser:appuser training/__init__.py training/pipeline.py training/retrain.py training/
+COPY --chown=appuser:appuser monitoring/__init__.py monitoring/campaigns.py monitoring/drift.py monitoring/
+COPY --chown=appuser:appuser evaluation/__init__.py evaluation/core.py evaluation/golden.json evaluation/reference.csv evaluation/
 COPY --chown=appuser:appuser models/ models/
 COPY --chown=appuser:appuser frontend/ frontend/
 RUN mkdir logs storage && chown appuser:appuser logs storage

@@ -84,6 +84,7 @@ form.addEventListener('submit', async (e) => {
     const data = await res.json();
     document.getElementById('feedbackClient').value = payload.client_id;
     document.getElementById('feedbackCampaign').value = payload.campaign_id;
+    document.getElementById('monitorCampaign').value = payload.campaign_id;
     const debutTranche = parseInt(data.tranche, 10);
     result.classList.add(debutTranche < 30 ? 'ok' : debutTranche < 50 ? 'warn' : 'ko');
     result.innerHTML = `
@@ -159,22 +160,78 @@ const renderRanked = () => {
   `;
 };
 
+const driftDialog = document.getElementById('driftDialog');
+let lastFile = null;
+const DRIFT_VERDICTS = {
+  stable: 'Faible',
+  watch: 'Modéré',
+  investigate: 'Fort',
+  insufficient_counts: 'Pas assez de clients',
+  no_data: 'Aucune donnée',
+};
+const formatNumber = (value, digits) => value.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+
+const renderDrift = (drift) => {
+  const flagged = drift.variables.filter((row) => row.status === 'investigate').length;
+  document.getElementById('driftSummary').textContent = `${drift.n_clients.toLocaleString('fr-FR')} clients comparés aux ${drift.n_reference.toLocaleString('fr-FR')} clients du test historique : `
+    + (flagged ? `${flagged} variable(s) avec un écart fort.` : 'aucun écart fort.');
+  document.getElementById('driftTable').innerHTML = `
+    <thead><tr><th>Variable</th><th>Écart</th><th>Mesure</th></tr></thead>
+    <tbody>${drift.variables.map((row) => {
+      const measure = row.psi != null ? `PSI ${formatNumber(row.psi, 2)}`
+        : row.chi2_pvalue != null ? `Chi², p = ${formatNumber(row.chi2_pvalue, 3)}` : '—';
+      return `<tr><td>${escapeHtml(row.feature)}</td><td><span class="drift-badge drift-${row.status}">${DRIFT_VERDICTS[row.status]}</span></td><td>${measure}</td></tr>`;
+    }).join('')}</tbody>
+  `;
+};
+
+const showLoading = (element, text) => {
+  element.className = 'rank-status loading';
+  element.textContent = text;
+};
+
+document.getElementById('openDrift').addEventListener('click', async (e) => {
+  const button = e.currentTarget;
+  button.disabled = true;
+  showLoading(rankStatus, 'Comparaison avec l’historique en cours…');
+  const body = new FormData();
+  body.append('file', lastFile);
+  try {
+    const res = await fetch('/drift', { method: 'POST', body });
+    if (!res.ok) throw new Error(await errorMessage(res));
+    renderDrift(await res.json());
+    rankStatus.className = 'rank-status';
+    rankStatus.textContent = `« ${lastFile.name} » : ${ranked.rows.length.toLocaleString('fr-FR')} clients classés.`;
+    driftDialog.showModal();
+  } catch (err) {
+    rankStatus.className = 'rank-status error';
+    rankStatus.textContent = `Erreur : ${err.message}`;
+  } finally {
+    button.disabled = false;
+  }
+});
+
 const sendFile = async (file) => {
   rankResult.hidden = true;
-  rankStatus.className = 'rank-status';
-  rankStatus.textContent = `Classement de « ${file.name} » en cours…`;
+  lastFile = file;
+  showLoading(rankStatus, `Classement de « ${file.name} » en cours…`);
+  dropZone.classList.add('busy');
   const body = new FormData();
   body.append('file', file);
   try {
     const res = await fetch('/rank', { method: 'POST', body });
     if (!res.ok) throw new Error(await errorMessage(res));
     ranked = parseRanked(await res.text());
+    rankStatus.className = 'rank-status';
     rankStatus.textContent = `« ${file.name} » : ${ranked.rows.length.toLocaleString('fr-FR')} clients classés.`;
     renderRanked();
     rankResult.hidden = false;
   } catch (err) {
-    rankStatus.classList.add('error');
+    rankStatus.className = 'rank-status error';
     rankStatus.textContent = `Erreur : ${err.message}`;
+  } finally {
+    dropZone.classList.remove('busy');
+    csvFile.value = '';
   }
 };
 
@@ -229,3 +286,71 @@ feedbackForm.addEventListener('submit', async (e) => {
     button.disabled = false;
   }
 });
+
+
+const campaignStatus = document.getElementById('campaignStatus');
+const campaignDialog = document.getElementById('campaignDialog');
+const TRIGGERS = { volume: 'assez de nouveaux résultats', degradation: 'campagne sous l’objectif' };
+const renderRetraining = (data) => {
+  const progress = `${data.unused_results.toLocaleString('fr-FR')} nouveaux résultats sur ${data.retrain_threshold.toLocaleString('fr-FR')} nécessaires`;
+  const run = data.retraining;
+  if (!run) return `<p>Aucun réentraînement : ${progress}, et objectif atteint.</p>`;
+  const reasons = run.trigger.split('+').map((name) => TRIGGERS[name]).join(' et ');
+  const row = (label, key, format) => `<tr><td>${label}</td><td>${format(run.served[key])}</td><td>${format(run.candidate[key])}</td></tr>`;
+  const auc = (value) => formatNumber(value, 3);
+  return `
+    <p>Réentraînement lancé (${reasons}) : ${run.n_history.toLocaleString('fr-FR')} clients historiques
+      et ${run.n_new_results.toLocaleString('fr-FR')} nouveaux résultats.</p>
+    <table>
+      <thead><tr><th>Sur le jeu de test</th><th>Modèle actuel</th><th>Nouveau modèle</th></tr></thead>
+      <tbody>${row('Rappel à 50 %', 'rappel_top50', percent)}${row('ROC AUC', 'roc_auc', auc)}</tbody>
+    </table>
+    <p class="${run.accepted ? 'above' : 'below'}">${run.accepted ? 'Garde-fous respectés' : 'Garde-fous non respectés'} : ${run.reasons.map(escapeHtml).join(' ; ')}.</p>
+    <p class="table-note">Le nouveau modèle est enregistré à part (${escapeHtml(run.run_id)}). Sa mise en production reste une décision humaine.</p>`;
+};
+
+const campaignAction = async () => {
+  const campaign = document.getElementById('monitorCampaign').value.trim();
+  if (!campaign) {
+    campaignStatus.textContent = 'Renseigner l’identifiant de la campagne.';
+    return;
+  }
+  const button = document.getElementById('closeCampaign');
+  button.disabled = true;
+  showLoading(campaignStatus, 'Calcul du bilan et réentraînement éventuel en cours…');
+  try {
+    const res = await fetch(`/campaigns/${encodeURIComponent(campaign)}/close`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) throw new Error(await errorMessage(res));
+    const data = await res.json();
+    campaignStatus.className = 'rank-status';
+    if (data.subscription_rate === null) {
+      campaignStatus.textContent = 'Campagne terminée. Aucun résultat connu dans le top 50 % d’un fichier classé : le taux ne peut pas être calculé.';
+      return;
+    }
+    campaignStatus.textContent = 'Campagne terminée.';
+    document.getElementById('campaignTitle').textContent = `Bilan de la campagne ${campaign}`;
+    document.getElementById('campaignSummary').innerHTML = `<strong>${percent(data.subscription_rate)}</strong> de souscription,
+      soit ${data.subscriptions} sur ${data.selected_known} résultats connus parmi les ${data.selected_expected} clients du top 50 %.`;
+    const verdict = document.getElementById('campaignVerdict');
+    verdict.className = data.below_threshold ? 'below' : 'above';
+    verdict.textContent = data.below_threshold
+      ? `Sous l’objectif de ${percent(data.threshold)}.`
+      : `Objectif de ${percent(data.threshold)} atteint.`;
+    document.getElementById('campaignTranches').innerHTML = `
+      <thead><tr><th>Tranche</th><th>Résultats connus</th><th>Taux annoncé</th><th>Taux observé</th><th>Écart</th></tr></thead>
+      <tbody>${data.tranches.map((row) => `<tr>
+        <td>${escapeHtml(row.tranche)}</td><td>${row.n}</td><td>${percent(row.displayed_rate)}</td>
+        <td>${percent(row.observed_rate)}</td><td>${row.gap > 0 ? '+' : ''}${formatNumber(row.gap * 100, 1)} pts</td>
+      </tr>`).join('')}</tbody>`;
+    document.getElementById('campaignRetraining').innerHTML = renderRetraining(data);
+    campaignDialog.showModal();
+  } catch (err) {
+    campaignStatus.className = 'rank-status error';
+    campaignStatus.textContent = err.message;
+  } finally {
+    button.disabled = false;
+  }
+};
+document.getElementById('closeCampaign').addEventListener('click', campaignAction);

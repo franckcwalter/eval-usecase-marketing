@@ -17,3 +17,6 @@ assets/
 logs/
 mlruns/
 mlflow.db
+reports/
+models/candidates/
+evaluation/champion/

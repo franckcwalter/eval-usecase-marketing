@@ -1,0 +1,2 @@
+-r ../api/requirements.txt
+mlflow==3.16.1

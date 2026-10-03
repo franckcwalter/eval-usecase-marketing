@@ -1,0 +1,19 @@
+{
+  "model_version": "1.0.0",
+  "model_sha256": "99f5a13c711a1b4a5091f3e78dfa152b0df2b6ab54e2680e35a420f9bbc17037",
+  "reference_sha256": "48292cf54722741afe8f204ba13c7cb874ba98bb5f71f8b2d3199b2e31ea7d8c",
+  "n": 8236,
+  "metrics": {
+    "rappel_top50": 0.8232758620689655,
+    "roc_auc": 0.7909998106704038,
+    "subscription_top50": 0.18552695483244294
+  },
+  "max_drop": {
+    "rappel_top50": 0.024369433391474734,
+    "roc_auc": 0.017661158109592335
+  },
+  "bootstrap_iterations": 500,
+  "bootstrap_seed": 42,
+  "reference_role": "historical_non_regression",
+  "mlflow_run_id": "859ffb9dead347d39517c236a86c3d2d"
+}

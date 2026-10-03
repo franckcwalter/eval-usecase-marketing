@@ -7,6 +7,14 @@ services:
     volumes:
       - logs:/home/appuser/app/logs
       - feedback:/home/appuser/app/storage
+      - ./data:/home/appuser/app/data:ro
+      - ./models/candidates:/home/appuser/app/models/candidates
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+    depends_on:
+      mlflow:
+        condition: service_healthy
     restart: unless-stopped
 
   sqlite-web:
@@ -21,6 +29,56 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  mlflow:
+    image: eval-usecase-marketing-monitoring
+    build:
+      context: .
+      dockerfile: monitoring/Dockerfile
+    environment:
+      MLFLOW_DISABLE_AGENT_HINT: "1"
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - ./mlflow.db:/tracking/mlflow.db
+      - ./mlruns:/tracking/artifacts
+      - ./mlruns:${PWD}/mlruns
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health')"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 10
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus:/prometheus
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.2.2
+    ports:
+      - "127.0.0.1:3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
 volumes:
   logs:
   feedback:
+  prometheus:
+  grafana:

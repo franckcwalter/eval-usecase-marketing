@@ -278,6 +278,20 @@ button[type="submit"]:hover,
 .drop-zone input { display: none; }
 
 .rank-status { margin: 12px 0 0; color: var(--muted); font-size: .9rem; }
+.loading::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  margin-right: 8px;
+  vertical-align: -1px;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--navy);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.drop-zone.busy { opacity: .6; pointer-events: none; }
 .rank-status.error { color: var(--ko-text); font-weight: 600; }
 
 .rank-controls { margin-top: 20px; }
@@ -310,7 +324,7 @@ th, td { padding: 7px 12px; text-align: left; border-bottom: 1px solid var(--bor
 th { position: sticky; top: 0; background: var(--navy); color: #fff; font-weight: 600; }
 tbody tr:nth-child(even) td { background: var(--page-bg); }
 td:nth-child(-n+4) { color: var(--navy); font-weight: 600; }
-th:nth-child(4) , td:nth-child(4) { border-right: 2px solid var(--gold); }
+#preview th:nth-child(4), #preview td:nth-child(4) { border-right: 2px solid var(--gold); }
 .table-note { margin: 8px 0 16px; color: var(--muted); font-size: .78rem; }
 
 .footer {
@@ -333,3 +347,20 @@ th:nth-child(4) , td:nth-child(4) { border-right: 2px solid var(--gold); }
   .stats { grid-template-columns: 1fr; }
   .stats > div + div { border-left: 0; border-top: 1px solid var(--border); }
 }
+
+#calledClients { width: 100%; padding: 6px 10px; border: 1px solid var(--border-strong); font: inherit; }
+
+#campaignTracking .actions { flex-wrap: wrap; }
+.modal { width: min(680px, calc(100vw - 32px)); padding: 24px; border: 1px solid var(--border); border-radius: 4px; }
+.modal::backdrop { background: rgb(0 0 0 / .4); }
+.modal h3 { margin: 0 0 8px; }
+.modal table { width: 100%; }
+.modal form { display: flex; justify-content: flex-end; }
+.drift-badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .8rem; font-weight: 600; }
+.drift-stable { background: var(--ok-bg); color: var(--ok-text); border: 1px solid var(--ok-line); }
+.drift-watch { background: var(--warn-bg); color: var(--warn-text); border: 1px solid var(--warn-line); }
+.drift-investigate { background: var(--ko-bg); color: var(--ko-text); border: 1px solid var(--ko-line); }
+.drift-insufficient_counts, .drift-no_data { color: var(--muted); border: 1px solid var(--border); }
+.modal .above { color: var(--ok-text); font-weight: 600; }
+.modal .below { color: var(--ko-text); font-weight: 600; }
+.modal h4 { margin: 20px 0 8px; }

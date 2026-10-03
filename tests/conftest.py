@@ -12,6 +12,8 @@ DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "bank-additional-f
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("FEEDBACK_DB_PATH", str(tmp_path / "feedback.db"))
+    monkeypatch.setattr("training.retrain.CANDIDATES_DIR", tmp_path / "candidates")
+    monkeypatch.setattr("training.retrain.log_run", lambda *args: "test-run")
     with TestClient(app) as test_client:
         yield test_client
 

@@ -1,0 +1,96 @@
+{
+  "model_name": "bank_marketing_s5_logreg",
+  "model_version": "1.0.0",
+  "scenario": "S5",
+  "created_at": "2026-10-02T12:49:43+00:00",
+  "git_commit": "22bba61",
+  "mlflow_run_id": "46d6cf0053c44b7d93020f5e95724ae2",
+  "python_version": "3.12.9",
+  "sklearn_version": "1.9.0",
+  "dataset_sha256": "233e260d5d1d506a2c10381da5b8c2f75f2c08d1b373ca7b825e39ebe1bd30df",
+  "hyperparameters": {
+    "max_iter": 1000,
+    "class_weight": "balanced"
+  },
+  "metrics_test": {
+    "rappel_top25": 0.667,
+    "rappel_top30": 0.7209,
+    "rappel_top50": 0.8233,
+    "rappel_top75": 0.9192,
+    "roc_auc": 0.791
+  },
+  "tranches_test": [
+    {
+      "tranche": "0-10 %",
+      "score_min": 0.7387,
+      "taux_souscription": 0.4976
+    },
+    {
+      "tranche": "10-20 %",
+      "score_min": 0.5765,
+      "taux_souscription": 0.1845
+    },
+    {
+      "tranche": "20-30 %",
+      "score_min": 0.4368,
+      "taux_souscription": 0.13
+    },
+    {
+      "tranche": "30-40 %",
+      "score_min": 0.3486,
+      "taux_souscription": 0.0655
+    },
+    {
+      "tranche": "40-50 %",
+      "score_min": 0.2982,
+      "taux_souscription": 0.0498
+    },
+    {
+      "tranche": "50-60 %",
+      "score_min": 0.2881,
+      "taux_souscription": 0.051
+    },
+    {
+      "tranche": "60-70 %",
+      "score_min": 0.2779,
+      "taux_souscription": 0.0388
+    },
+    {
+      "tranche": "70-80 %",
+      "score_min": 0.267,
+      "taux_souscription": 0.034
+    },
+    {
+      "tranche": "80-90 %",
+      "score_min": 0.2254,
+      "taux_souscription": 0.0352
+    },
+    {
+      "tranche": "90-100 %",
+      "score_min": 0.1001,
+      "taux_souscription": 0.0401
+    }
+  ],
+  "features": {
+    "numeric": [
+      "cons.conf.idx",
+      "cons.price.idx",
+      "emp.var.rate",
+      "previous"
+    ],
+    "categorical": [
+      "contact",
+      "default",
+      "housing",
+      "loan",
+      "poutcome"
+    ]
+  },
+  "target": {
+    "column": "y",
+    "mapping": {
+      "no": 0,
+      "yes": 1
+    }
+  }
+}

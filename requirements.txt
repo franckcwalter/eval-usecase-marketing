@@ -7,6 +7,7 @@ seaborn         # canvas
 scikit-learn    # decouverte_scikit_learn (import sklearn)
 shap            # cas_usage_bank_marketing §7.1
 mlflow          # training/train.py, suivi des runs §8.1
+prometheus-client  # métriques HTTP et bilans de suivi
 fastapi         # api/, §8.2
 uvicorn[standard]  # serveur de l'API
 python-multipart   # upload du CSV sur /rank

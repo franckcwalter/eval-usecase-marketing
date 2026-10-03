@@ -68,6 +68,11 @@ class FeedbackResponse(BaseModel):
     campaign_id: str
 
 
+class CampaignCalls(BaseModel):
+    client_ids: list[Identifier] = Field(default_factory=list, max_length=100000)
+    selected_top50: bool = False
+
+
 class HealthResponse(BaseModel):
     status: Literal["ok"]
     model_version: str
