@@ -93,6 +93,7 @@ form.addEventListener('submit', async (e) => {
       <span class="result-hint">La tranche 0-10 % regroupe les clients les plus susceptibles de souscrire.</span>
       <span class="probability">${percent(data.taux_reel_tranche)}</span>
       <span class="probability-label">des clients de cette tranche ont souscrit</span>
+      ${data.hors_historique ? '<span class="result-hint">Une valeur sort de celles de l’historique : profil à revoir par un conseiller.</span>' : ''}
       <span class="result-meta">Score du modèle : ${data.score.toLocaleString('fr-FR')}<br>Modèle ${data.model_version}<br>Requête <code>${data.request_id}</code></span>
     `;
   } catch (err) {
@@ -175,6 +176,10 @@ const renderDrift = (drift) => {
   const flagged = drift.variables.filter((row) => row.status === 'investigate').length;
   document.getElementById('driftSummary').textContent = `${drift.n_clients.toLocaleString('fr-FR')} clients comparés aux ${drift.n_reference.toLocaleString('fr-FR')} clients du test historique : `
     + (flagged ? `${flagged} variable(s) avec un écart fort.` : 'aucun écart fort.');
+  const outside = drift.outside_clients;
+  document.getElementById('driftOutside').textContent = outside.length
+    ? `${outside.length} client(s) avec une valeur jamais vue dans l’historique, à revoir par un conseiller : ${outside.join(', ')}.`
+    : 'Aucun client avec une valeur jamais vue dans l’historique.';
   document.getElementById('driftTable').innerHTML = `
     <thead><tr><th>Variable</th><th>Écart</th><th>Mesure</th></tr></thead>
     <tbody>${drift.variables.map((row) => {

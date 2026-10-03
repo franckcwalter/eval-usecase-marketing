@@ -359,6 +359,50 @@
         "showHeader": true,
         "cellHeight": "sm"
       }
+    },
+    {
+      "id": 7,
+      "title": "Clients refusés et clients hors historique",
+      "type": "timeseries",
+      "description": "Refus : requêtes rejetées par la validation, par motif. Hors historique : clients scorés dont une variable numérique sort des valeurs du jeu de test.",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (motif) (increase(bank_rejections_total[1h]))",
+          "legendFormat": "Refus : {{motif}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(bank_out_of_range_clients_total[1h]))",
+          "legendFormat": "Hors historique"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      }
     }
   ],
   "links": [

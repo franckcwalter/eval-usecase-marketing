@@ -48,3 +48,11 @@ def compare(reference, current, numeric, categorical):
                        "unknown_rate": float((cur == "unknown").mean()) if len(cur) else None,
                        "status": "investigate" if pvalue is not None and pvalue < .05 else "stable" if pvalue is not None else "insufficient_counts"})
     return report
+
+
+def outside_reference(reference, current, numeric):
+    """Indique, client par client, si une variable numérique sort des valeurs observées dans la référence."""
+    outside = pd.Series(False, index=current.index)
+    for feature in numeric:
+        outside |= (current[feature] < reference[feature].min()) | (current[feature] > reference[feature].max())
+    return outside

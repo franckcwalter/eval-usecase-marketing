@@ -14,11 +14,13 @@ from pathlib import Path
 import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException, Request, Response, UploadFile
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from loguru import logger
 from pydantic import TypeAdapter, ValidationError
 
 from api.middleware import LoggingMiddleware
-from api.metrics import CAMPAIGN_RATE, DRIFT_LEVEL, MetricsMiddleware, metrics_response
+from api.metrics import CAMPAIGN_RATE, DRIFT_LEVEL, OUT_OF_RANGE, REJECTIONS, MetricsMiddleware, metrics_response
 from api.ranking import rank_clients, tranche_of_score
 from api.schemas import CampaignCalls, Feedback, FeedbackResponse, HealthResponse, Prediction, ScoringRequest
 from api.storage import (
@@ -26,7 +28,7 @@ from api.storage import (
     save_report,
 )
 from monitoring.campaigns import evaluate_campaign, read_campaigns
-from monitoring.drift import compare
+from monitoring.drift import compare, outside_reference
 from training.pipeline import CATEGORICAL_FEATURES, FEATURES, NUMERIC_FEATURES
 from training.retrain import retrain, volume_threshold
 
@@ -75,6 +77,17 @@ app.add_middleware(LoggingMiddleware)
 app.add_middleware(MetricsMiddleware)
 
 
+@app.exception_handler(RequestValidationError)
+async def count_invalid_request(request: Request, exc: RequestValidationError):
+    REJECTIONS.labels(request.url.path, "valeur_invalide").inc()
+    return await request_validation_exception_handler(request, exc)
+
+
+def reject(route: str, motif: str, detail):
+    REJECTIONS.labels(route, motif).inc()
+    return HTTPException(status_code=422, detail=detail)
+
+
 def predict_scores(features: pd.DataFrame):
     try:
         return app.state.model.predict_proba(features[FEATURES])[:, 1]
@@ -83,23 +96,23 @@ def predict_scores(features: pd.DataFrame):
         raise HTTPException(status_code=500, detail="Échec de la prédiction") from exc
 
 
-def read_csv(content: bytes) -> tuple[pd.DataFrame, str]:
+def read_csv(content: bytes, route: str) -> tuple[pd.DataFrame, str]:
     try:
         text = content.decode("utf-8-sig")
         sep = csv.Sniffer().sniff(text.splitlines()[0], delimiters=",;").delimiter
         return pd.read_csv(io.StringIO(text), sep=sep, dtype=str, keep_default_na=False), sep
     except (UnicodeDecodeError, IndexError, csv.Error, pd.errors.ParserError) as exc:
-        raise HTTPException(status_code=422, detail="Fichier illisible : CSV encodé en UTF-8 attendu") from exc
+        raise reject(route, "fichier_illisible", "Fichier illisible : CSV encodé en UTF-8 attendu") from exc
 
 
-def parse_clients(content: bytes) -> tuple[pd.DataFrame, str, pd.DataFrame]:
-    clients, sep = read_csv(content)
+def parse_clients(content: bytes, route: str) -> tuple[pd.DataFrame, str, pd.DataFrame]:
+    clients, sep = read_csv(content, route)
     if clients.empty:
-        raise HTTPException(status_code=422, detail="Le fichier ne contient aucun client")
+        raise reject(route, "fichier_vide", "Le fichier ne contient aucun client")
 
     manquantes = [col for col in [*FEATURES, "client_id", "campaign_id"] if col not in clients.columns]
     if manquantes:
-        raise HTTPException(status_code=422, detail={"colonnes_manquantes": manquantes})
+        raise reject(route, "colonnes_manquantes", {"colonnes_manquantes": manquantes})
 
     try:
         profils = clients_adapter.validate_python(clients[[*FEATURES, "client_id", "campaign_id"]].to_dict("records"))
@@ -108,13 +121,13 @@ def parse_clients(content: bytes) -> tuple[pd.DataFrame, str, pd.DataFrame]:
             {"ligne": err["loc"][0] + 2, "colonne": err["loc"][1], "message": err["msg"]}
             for err in exc.errors()[:MAX_ERREURS_AFFICHEES]
         ]
-        raise HTTPException(status_code=422, detail={"nb_erreurs": exc.error_count(), "erreurs": erreurs}) from exc
+        raise reject(route, "valeur_invalide", {"nb_erreurs": exc.error_count(), "erreurs": erreurs}) from exc
 
     validated = pd.DataFrame([profil.model_dump(by_alias=True) for profil in profils])
     if validated.duplicated(["client_id", "campaign_id"]).any():
-        raise HTTPException(422, "Un client apparaît plusieurs fois dans la même campagne")
+        raise reject(route, "client_en_double", "Un client apparaît plusieurs fois dans la même campagne")
     if validated["campaign_id"].nunique() != 1:
-        raise HTTPException(422, "Le fichier doit contenir une seule campagne")
+        raise reject(route, "plusieurs_campagnes", "Le fichier doit contenir une seule campagne")
     clients[["client_id", "campaign_id"]] = validated[["client_id", "campaign_id"]]
     return clients, sep, validated
 
@@ -140,6 +153,9 @@ def predict(client: ScoringRequest, request: Request) -> Prediction:
     entrees = client.model_dump(by_alias=True, exclude={"client_id", "campaign_id"})
     score = round(float(predict_scores(pd.DataFrame([entrees]))[0]), 3)
     tranche = tranche_of_score(score, app.state.metadata["tranches_test"])
+    hors_historique = bool(outside_reference(app.state.reference, pd.DataFrame([entrees]), NUMERIC_FEATURES).iloc[0])
+    if hors_historique:
+        OUT_OF_RANGE.labels("/predict").inc()
     save_predictions(app.state.database_path, [{
         "client_id": client.client_id, "campaign_id": client.campaign_id,
         "features": entrees, "score": score, "tranche": tranche["tranche"],
@@ -156,6 +172,7 @@ def predict(client: ScoringRequest, request: Request) -> Prediction:
         taux_reel_tranche=tranche["taux_souscription"],
         model_version=app.state.metadata["model_version"],
         request_id=request.state.request_id,
+        hors_historique=hors_historique,
     )
 
 
@@ -169,9 +186,12 @@ def rank(file: UploadFile, request: Request) -> Response:
 
     Le CSV renvoyé reprend toutes les colonnes reçues et ajoute score, rang, tranche et taux_reel_tranche.
     """
-    clients, sep, validated = parse_clients(file.file.read())
+    clients, sep, validated = parse_clients(file.file.read(), "/rank")
     features = validated[FEATURES]
     taux_par_tranche = {t["tranche"]: t["taux_souscription"] for t in app.state.metadata["tranches_test"]}
+    outside = outside_reference(app.state.reference, validated, NUMERIC_FEATURES)
+    OUT_OF_RANGE.labels("/rank").inc(int(outside.sum()))
+    clients["hors_historique"] = outside.map({True: "oui", False: "non"}).to_numpy()
     ranked = rank_clients(clients, predict_scores(features), taux_par_tranche)
     features_by_client = dict(zip(validated["client_id"], features.to_dict("records")))
     save_predictions(app.state.database_path, [{
@@ -203,9 +223,11 @@ def rank(file: UploadFile, request: Request) -> Response:
 @app.post("/drift")
 def drift(file: UploadFile) -> dict:
     """Compare les profils d'un fichier de clients à ceux du test historique."""
-    _, _, validated = parse_clients(file.file.read())
+    _, _, validated = parse_clients(file.file.read(), "/drift")
+    outside = outside_reference(app.state.reference, validated, NUMERIC_FEATURES)
     return {"campaign_id": validated["campaign_id"].iloc[0], "n_clients": len(validated),
-            "n_reference": len(app.state.reference), "variables": measure_drift(validated)}
+            "n_reference": len(app.state.reference), "variables": measure_drift(validated),
+            "outside_clients": validated.loc[outside, "client_id"].tolist()}
 
 
 @app.post("/feedback", response_model=FeedbackResponse, status_code=201)

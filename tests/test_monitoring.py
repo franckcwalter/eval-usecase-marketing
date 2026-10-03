@@ -1,3 +1,4 @@
+import io
 import json
 from pathlib import Path
 
@@ -173,3 +174,25 @@ def test_volume_triggers_training(client, clients_csv, monkeypatch):
     label_selected(client, campaign, 10)
     monkeypatch.setattr(app.state, "retrain_threshold", 25)
     assert client.post(f"/campaigns/{campaign}/close").json()["retraining"]["trigger"] == "volume"
+
+
+def test_rejections_are_counted_by_motif(client, clients_csv, valid_payload):
+    content = clients_csv.drop(columns="contact").to_csv(sep=";", index=False).encode()
+    assert client.post("/rank", files={"file": ("clients.csv", content, "text/csv")}).status_code == 422
+    assert client.post("/predict", json={**valid_payload, "previous": -1}).status_code == 422
+    text = client.get("/metrics").text
+    assert 'bank_rejections_total{motif="colonnes_manquantes",route="/rank"}' in text
+    assert 'bank_rejections_total{motif="valeur_invalide",route="/predict"}' in text
+
+
+def test_out_of_range_clients_are_flagged(client, clients_csv, valid_payload):
+    assert client.post("/predict", json=valid_payload).json()["hors_historique"] is False
+    outside = {**valid_payload, "client_id": "hors", "cons.conf.idx": -80}
+    assert client.post("/predict", json=outside).json()["hors_historique"] is True
+    frame = clients_csv.copy()
+    frame.loc[frame.index[0], "cons.conf.idx"] = -80
+    ranked = pd.read_csv(io.StringIO(post_csv(client, frame).text), sep=";")
+    assert (ranked.hors_historique == "oui").sum() == 1
+    content = frame.to_csv(sep=";", index=False).encode()
+    drift = client.post("/drift", files={"file": ("clients.csv", content, "text/csv")}).json()
+    assert drift["outside_clients"] == [frame.client_id.iloc[0]]

@@ -49,6 +49,7 @@ class Prediction(BaseModel):
     taux_reel_tranche: float = Field(description="Taux de souscription mesuré dans cette tranche sur le jeu de test")
     model_version: str
     request_id: str
+    hors_historique: bool = Field(description="Une variable numérique sort des valeurs observées sur le jeu de test")
 
 
 class ScoringRequest(ClientProfile):
