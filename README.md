@@ -10,8 +10,7 @@ L’objectif métier fixé est de retrouver au moins **80 % des souscripteurs en
 |---|---|
 | [cas_usage_bank_marketing.ipynb](cas_usage_bank_marketing.ipynb) | Analyse exploratoire, préparation, comparaison des modèles et choix de la solution |
 | [journal-de-bord.ipynb](journal-de-bord.ipynb) | Journal de bord du projet |
-| [rendu_certif.ipynb](rendu_certif.ipynb) | Notebook de rendu réunissant le cas d’usage et le journal de bord |
-| `data/` | Données historiques, dont `bank-additional-full.csv` |
+| [rendu/rendu_certif.ipynb](rendu/rendu_certif.ipynb) | Notebook de rendu réunissant le cas d’usage et le journal de bord || `data/` | Données historiques, dont `bank-additional-full.csv` |
 | `training/` | Pipeline, entraînement initial et réentraînement des candidats |
 | `models/` | Pipeline sauvegardé et métadonnées du modèle |
 | `api/` et `frontend/` | API FastAPI et interface web |
