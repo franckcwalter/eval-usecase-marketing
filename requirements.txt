@@ -1,19 +1,9 @@
 # Installation : pip install -r requirements.txt
+# Versions figées de l'API, des tests et du modèle, puis dépendances d'analyse.
+-r requirements-test.txt
 
-pandas          # decouverte_pandas, decouverte_scikit_learn, canvas
-numpy           # canvas
 matplotlib      # graphiques : decouverte_pandas (.plot), canvas
 seaborn         # canvas
-scikit-learn    # decouverte_scikit_learn (import sklearn)
 shap            # cas_usage_bank_marketing §7.1
-mlflow          # training/train.py, suivi des runs §8.1
-prometheus-client  # métriques HTTP et bilans de suivi
-fastapi         # api/, §8.2
-uvicorn[standard]  # serveur de l'API
-python-multipart   # upload du CSV sur /rank
-loguru          # journalisation des requêtes de l'API
-pytest          # tests/
-httpx2          # client de test de FastAPI
 ipywidgets      # barres de progression de shap dans le notebook
-
 ipykernel       # exécuter les notebooks (kernel Jupyter dans l'IDE)
