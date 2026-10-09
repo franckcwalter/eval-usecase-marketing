@@ -16,3 +16,6 @@ data/feedbacks*.csv
 data/*.provenance.json
 data/train*.csv
 data/clients_test_*.csv
+assets
+docs/
+PLAN.md

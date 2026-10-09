@@ -1,12 +1,12 @@
 # QUESTIONNAIRE — PRÉPARATION DU QUIZ
 
 - Le questionnaire porte **uniquement sur les compétences C1, C2 et C4**.
-- Le [référentiel](docs/00_competences_referentiels.md) confirme : **15 questions sur C1, C2 et C4**.
-- **Ressources de la formatrice importées dans `docs/` :**
-  - [Glossaire IA](docs/glossaire_IA.md) : les termes utiles au questionnaire C1/C2/C4 sont marqués 🎓.
-  - [Cheatsheet métriques](docs/cheatsheet_metriques.md) : les métriques du questionnaire C4 sont marquées 🎓.
-  - Compléments C4 : [grille de décision](docs/grille_decision_C4.md) et [outil de décision](docs/outil_decision_C4.md).
-- [ ] Récupérer le document dédié de Marianne annoncé pour la préparation du quiz, dès qu’il sera disponible : aucun fichier distinct clairement identifié comme ce document dans le dossier local vérifié le 15/09/2026.
+- Le [référentiel](docs/00_competences_referentiels.md) confirme : **15 questions sur C1, C2 et C4**, en 45 minutes, le 7 octobre 2026.
+- **Dossier de révision : [`docs/qcm/`](docs/qcm/00_LIRE_DABORD.md).** Commencer par `00_LIRE_DABORD.md`, qui donne l'ordre de lecture.
+  - [Fiches de révision CISIA](docs/qcm/01_fiches_revision.html) : le document de Marianne pour le quiz (C1, C2, C4, AI Act et RGPD, auto-tests).
+  - [Cheatsheet métriques](docs/qcm/02_cheatsheet_metriques.md) : les métriques du questionnaire C4 sont marquées 🎓.
+  - Compléments C4 : [grille de décision](docs/qcm/03_grille_decision_C4.md) et [outil de décision](docs/qcm/04_outil_decision_C4.md).
+  - [Termes du quiz](docs/qcm/05_termes_quiz.md) : les définitions du glossaire marquées 🎓.
 
 # CONTEXTE
 
